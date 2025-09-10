@@ -558,7 +558,9 @@ function getMenuItemVariants($conn, $menu_item_id) {
                                 <th>Image</th>
                                 <th>Name</th>
                                 <th>Category</th>
+                                <th>Price</th>
                                 <th>Type</th>
+                                <th>Spice Level</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -574,6 +576,7 @@ function getMenuItemVariants($conn, $menu_item_id) {
                                 </td>
                                 <td><?php echo $item['name']; ?></td>
                                 <td><?php echo $item['category_name']; ?></td>
+                                <td>$<?php echo number_format($item['price'], 2); ?></td>
                                 <td>
                                     <span class="badge <?php echo $item['food_type'] == 'veg' ? 'bg-success' : 'bg-danger'; ?>">
                                         <?php echo ucfirst($item['food_type']); ?>
@@ -582,7 +585,20 @@ function getMenuItemVariants($conn, $menu_item_id) {
                                     <span class="badge bg-secondary ms-1">18+</span>
                                     <?php endif; ?>
                                 </td>
-                                
+                                <td>
+                                    <?php 
+                                    $spice_icons = [
+                                        'mild' => 1,
+                                        'medium' => 2,
+                                        'hot' => 3,
+                                        'extra hot' => 4
+                                    ];
+                                    $count = $spice_icons[$item['spice_level']] ?? 0;
+                                    for ($i = 0; $i < $count; $i++) {
+                                        echo '<i class="fas fa-pepper-hot text-danger"></i> ';
+                                    }
+                                    ?>
+                                </td>
                                 <td>
                                     <a href="index.php?page=menu_items&action=edit&id=<?php echo $item['id']; ?>" class="btn btn-sm btn-primary">
                                         <i class="fas fa-edit"></i>
