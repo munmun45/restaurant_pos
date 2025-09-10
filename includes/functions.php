@@ -123,11 +123,15 @@ function getCategoryById($conn, $id) {
  * Get menu items by category
  * @param mysqli $conn Database connection
  * @param int $category_id Category ID
- * @return array Array of menu items
+ * @return array Array of menu items with their variants
  */
 function getMenuItemsByCategory($conn, $category_id) {
     $items = [];
-    $sql = "SELECT * FROM menu_items WHERE category_id = ? ORDER BY name ASC";
+    $sql = "SELECT m.*, c.name as category_name 
+           FROM menu_items m 
+           JOIN categories c ON m.category_id = c.id 
+           WHERE m.category_id = ? 
+           ORDER BY m.name ASC";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $category_id);
     $stmt->execute();
@@ -135,6 +139,8 @@ function getMenuItemsByCategory($conn, $category_id) {
     
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
+            // Get variants for this menu item
+            $row['variants'] = getMenuItemVariants($conn, $row['id']);
             $items[] = $row;
         }
     }
@@ -145,7 +151,7 @@ function getMenuItemsByCategory($conn, $category_id) {
 /**
  * Get all menu items
  * @param mysqli $conn Database connection
- * @return array Array of menu items
+ * @return array Array of menu items with their variants
  */
 function getAllMenuItems($conn) {
     $items = [];
@@ -157,6 +163,8 @@ function getAllMenuItems($conn) {
     
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
+            // Get variants for this menu item
+            $row['variants'] = getMenuItemVariants($conn, $row['id']);
             $items[] = $row;
         }
     }
@@ -225,5 +233,28 @@ function displayMessage() {
     }
     
     return '';
+}
+
+/**
+ * Get variants for a menu item
+ * @param mysqli $conn Database connection
+ * @param int $menu_item_id Menu item ID
+ * @return array Array of variants for the menu item
+ */
+function getMenuItemVariants($conn, $menu_item_id) {
+    $variants = [];
+    $sql = "SELECT * FROM menu_item_variants WHERE menu_item_id = ? ORDER BY price ASC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $menu_item_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $variants[] = $row;
+        }
+    }
+    
+    return $variants;
 }
 ?>

@@ -45,18 +45,54 @@ $(document).ready(function() {
         $(this).addClass('active');
     });
     
-    // Add to order button
-    $('.btn-add-to-order').on('click', function() {
+    // Add to order button for regular items
+    $(document).on('click', '.btn-add-to-order', function() {
         var itemId = $(this).data('item-id');
         var itemName = $(this).data('item-name');
         var itemPrice = $(this).data('item-price');
+        var quantity = $(this).closest('.d-flex').find('.item-quantity').val() || 1;
         
         // Here you would add the item to the order
         // For now, just show an alert
-        alert(itemName + ' added to order!');
+        alert(quantity + 'x ' + itemName + ' added to order!');
         
         // In a real application, you would use AJAX to add the item to the order
-        // $.post('add_to_order.php', { item_id: itemId, quantity: 1 }, function(response) {
+        // $.post('add_to_order.php', { 
+        //     item_id: itemId, 
+        //     quantity: quantity,
+        //     variant_id: null,
+        //     price: itemPrice
+        // }, function(response) {
+        //     // Handle response
+        // });
+    });
+    
+    // Add variant to order button
+    $(document).on('click', '.btn-add-variant', function() {
+        var itemId = $(this).data('item-id');
+        var itemName = $(this).data('item-name');
+        var variantId = $(this).data('variant-id');
+        var variantPrice = $(this).data('variant-price');
+        var variantPortion = $(this).data('variant-portion');
+        var variantSpice = $(this).data('variant-spice');
+        var quantity = $(this).closest('tr').find('.variant-quantity').val() || 1;
+        
+        var variantInfo = variantPortion;
+        if (variantSpice && variantSpice !== 'none') {
+            variantInfo += ' - ' + variantSpice;
+        }
+        
+        // Here you would add the variant to the order
+        // For now, just show an alert
+        alert(quantity + 'x ' + itemName + ' (' + variantInfo + ') added to order!');
+        
+        // In a real application, you would use AJAX to add the variant to the order
+        // $.post('add_to_order.php', { 
+        //     item_id: itemId, 
+        //     quantity: quantity,
+        //     variant_id: variantId,
+        //     price: variantPrice
+        // }, function(response) {
         //     // Handle response
         // });
     });

@@ -30,7 +30,7 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.125);
 }
 
-/* Menu Item Card */
+/* Menu Item Styles */
 .menu-item-card {
     height: 100%;
 }
@@ -41,10 +41,70 @@ body {
     width: 100%;
 }
 
+/* Menu List View */
+.menu-list-table {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.menu-list-table thead th {
+    border-bottom: none;
+    font-weight: 600;
+}
+
+.menu-list-table tbody tr {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    background-color: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.menu-list-table tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.menu-list-image {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.menu-list-image-placeholder {
+    width: 70px;
+    height: 70px;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    color: #adb5bd;
+}
+
+.variant-row {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.variant-row:hover {
+    transform: none !important;
+}
+
+.variants-list {
+    background-color: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #dee2e6;
+}
+
 .menu-item-badge {
     position: absolute;
     top: 10px;
     right: 10px;
+}
+
+/* List view badges don't need absolute positioning */
+.menu-list-table .menu-item-badge {
+    position: static;
 }
 
 .veg-badge {
@@ -66,6 +126,43 @@ body {
 
 .spice-level i {
     color: #dc3545;
+}
+
+/* Variants Section */
+.variants-section {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+.variants-section h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.variants-section .table {
+    margin-bottom: 0;
+}
+
+.variants-section .table th {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    border-top: none;
+}
+
+.variants-section .table td {
+    vertical-align: middle;
+    padding: 0.5rem;
+}
+
+.variant-details {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.variant-quantity {
+    min-width: 60px;
 }
 
 /* Category Pills */
