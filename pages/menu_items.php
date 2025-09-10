@@ -15,13 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['add_menu_item'])) {
         $category_id = $_POST['category_id'];
         $name = sanitize($_POST['name']);
-        $price = $_POST['price'];
         $food_type = $_POST['food_type'];
         $age_restriction = isset($_POST['age_restriction']) ? 1 : 0;
-        $spice_level = $_POST['spice_level'];
-        $portion_size = $_POST['portion_size'];
-        $prep_time = $_POST['prep_time'];
         $description = sanitize($_POST['description']);
+        
+        // Get the first variant for the main item
+        $price = isset($_POST['variants'][0]['price']) ? $_POST['variants'][0]['price'] : 0;
+        $spice_level = isset($_POST['variants'][0]['spice_level']) ? $_POST['variants'][0]['spice_level'] : 'none';
+        $sweet_level = isset($_POST['variants'][0]['sweet_level']) ? $_POST['variants'][0]['sweet_level'] : 'none';
+        $portion_size = isset($_POST['variants'][0]['portion_size']) ? $_POST['variants'][0]['portion_size'] : 'small';
+        $prep_time = isset($_POST['variants'][0]['prep_time']) ? $_POST['variants'][0]['prep_time'] : 15;
         
         // Validate input
         if (empty($name) || empty($price) || empty($category_id)) {
@@ -37,12 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             
             if (!isset($error)) {
-                $sql = "INSERT INTO menu_items (category_id, name, price, food_type, age_restriction, spice_level, portion_size, prep_time, image, description) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO menu_items (category_id, name, price, food_type, age_restriction, spice_level, sweet_level, portion_size, prep_time, image, description) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $conn->prepare($sql);
-                $stmt->bind_param("isdsssssss", $category_id, $name, $price, $food_type, $age_restriction, $spice_level, $portion_size, $prep_time, $image, $description);
+                $stmt->bind_param("isdssssssss", $category_id, $name, $price, $food_type, $age_restriction, $spice_level, $sweet_level, $portion_size, $prep_time, $image, $description);
                 
                 if ($stmt->execute()) {
+                    $menu_item_id = $conn->insert_id;
+                    
+                    // Save additional variants if any
+                    if (isset($_POST['variants']) && count($_POST['variants']) > 1) {
+                        saveMenuItemVariants($conn, $menu_item_id, $_POST['variants']);
+                    }
+                    
                     redirectWithMessage('index.php?page=menu_items', 'Menu item added successfully');
                 } else {
                     $error = "Error adding menu item: " . $conn->error;
@@ -56,13 +66,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $id = $_POST['id'];
         $category_id = $_POST['category_id'];
         $name = sanitize($_POST['name']);
-        $price = $_POST['price'];
         $food_type = $_POST['food_type'];
         $age_restriction = isset($_POST['age_restriction']) ? 1 : 0;
-        $spice_level = $_POST['spice_level'];
-        $portion_size = $_POST['portion_size'];
-        $prep_time = $_POST['prep_time'];
         $description = sanitize($_POST['description']);
+        
+        // Get the first variant for the main item
+        $price = isset($_POST['variants'][0]['price']) ? $_POST['variants'][0]['price'] : 0;
+        $spice_level = isset($_POST['variants'][0]['spice_level']) ? $_POST['variants'][0]['spice_level'] : 'none';
+        $sweet_level = isset($_POST['variants'][0]['sweet_level']) ? $_POST['variants'][0]['sweet_level'] : 'none';
+        $portion_size = isset($_POST['variants'][0]['portion_size']) ? $_POST['variants'][0]['portion_size'] : 'small';
+        $prep_time = isset($_POST['variants'][0]['prep_time']) ? $_POST['variants'][0]['prep_time'] : 15;
         
         // Validate input
         if (empty($name) || empty($price) || empty($category_id)) {
@@ -94,15 +107,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         food_type = ?, 
                         age_restriction = ?, 
                         spice_level = ?, 
+                        sweet_level = ?, 
                         portion_size = ?, 
                         prep_time = ?, 
                         image = ?, 
                         description = ? 
                         WHERE id = ?";
                 $stmt = $conn->prepare($sql);
-                $stmt->bind_param("isdsssssssi", $category_id, $name, $price, $food_type, $age_restriction, $spice_level, $portion_size, $prep_time, $image, $description, $id);
+                $stmt->bind_param("isdssssssssi", $category_id, $name, $price, $food_type, $age_restriction, $spice_level, $sweet_level, $portion_size, $prep_time, $image, $description, $id);
                 
                 if ($stmt->execute()) {
+                    // Save additional variants if any
+                    if (isset($_POST['variants']) && count($_POST['variants']) > 1) {
+                        // First delete existing variants
+                        deleteMenuItemVariants($conn, $id);
+                        // Then save new variants
+                        saveMenuItemVariants($conn, $id, $_POST['variants']);
+                    }
+                    
                     redirectWithMessage('index.php?page=menu_items', 'Menu item updated successfully');
                 } else {
                     $error = "Error updating menu item: " . $conn->error;
@@ -136,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 // Get menu item for editing
 $menu_item = null;
+$menu_item_variants = [];
 if ($action == 'edit' && isset($_GET['id'])) {
     $id = $_GET['id'];
     $menu_item = getMenuItemById($conn, $id);
@@ -143,6 +166,9 @@ if ($action == 'edit' && isset($_GET['id'])) {
     if (!$menu_item) {
         redirectWithMessage('index.php?page=menu_items', 'Menu item not found', 'error');
     }
+    
+    // Get variants for this menu item
+    $menu_item_variants = getMenuItemVariants($conn, $id);
 }
 
 // Get all menu items for listing
@@ -153,6 +179,70 @@ if ($action == 'list') {
 
 // Get all categories for dropdown
 $categories = getCategories($conn);
+
+/**
+ * Save menu item variants to the database
+ * @param mysqli $conn Database connection
+ * @param int $menu_item_id Menu item ID
+ * @param array $variants Array of variants
+ */
+function saveMenuItemVariants($conn, $menu_item_id, $variants) {
+    // Skip the first variant as it's already saved in the main menu_items table
+    for ($i = 1; $i < count($variants); $i++) {
+        $variant = $variants[$i];
+        
+        // Skip if price is not set or is empty
+        if (!isset($variant['price']) || empty($variant['price'])) {
+            continue;
+        }
+        
+        $spice_level = isset($variant['spice_level']) ? $variant['spice_level'] : 'none';
+        $sweet_level = isset($variant['sweet_level']) ? $variant['sweet_level'] : 'none';
+        $portion_size = isset($variant['portion_size']) ? $variant['portion_size'] : 'small';
+        $prep_time = isset($variant['prep_time']) ? $variant['prep_time'] : 15;
+        $price = $variant['price'];
+        
+        $sql = "INSERT INTO menu_item_variants (menu_item_id, spice_level, sweet_level, portion_size, prep_time, price) 
+                VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("issssd", $menu_item_id, $spice_level, $sweet_level, $portion_size, $prep_time, $price);
+        $stmt->execute();
+    }
+}
+
+/**
+ * Delete all variants for a menu item
+ * @param mysqli $conn Database connection
+ * @param int $menu_item_id Menu item ID
+ */
+function deleteMenuItemVariants($conn, $menu_item_id) {
+    $sql = "DELETE FROM menu_item_variants WHERE menu_item_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $menu_item_id);
+    $stmt->execute();
+}
+
+/**
+ * Get all variants for a menu item
+ * @param mysqli $conn Database connection
+ * @param int $menu_item_id Menu item ID
+ * @return array Array of variants
+ */
+function getMenuItemVariants($conn, $menu_item_id) {
+    $variants = [];
+    
+    $sql = "SELECT * FROM menu_item_variants WHERE menu_item_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $menu_item_id);
+    $stmt->execute();
+    
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $variants[] = $row;
+    }
+    
+    return $variants;
+}
 ?>
 
 <div class="row mb-4">
@@ -180,7 +270,7 @@ $categories = getCategories($conn);
 <?php if ($action == 'add' || $action == 'edit'): ?>
 <!-- Add/Edit Menu Item Form -->
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-12">
         <div class="card">
             <div class="card-body">
                 <form method="post" action="" enctype="multipart/form-data" class="needs-validation" novalidate>
@@ -224,7 +314,7 @@ $categories = getCategories($conn);
                         <div class="row mb-3 attribute-row">
                             <div class="col-md-2">
                                 <label for="spice_level" class="form-label">Spice Level</label>
-                                <select class="form-select" id="spice_level" name="spice_level">
+                                <select class="form-select" id="spice_level" name="variants[0][spice_level]">
                                     <option value="none" <?php echo ($action == 'edit' && $menu_item['spice_level'] == 'none') ? 'selected' : ''; ?>>None</option>
                                     <option value="mild" <?php echo ($action == 'edit' && $menu_item['spice_level'] == 'mild') ? 'selected' : ''; ?>>Mild</option>
                                     <option value="medium" <?php echo ($action == 'edit' && $menu_item['spice_level'] == 'medium') ? 'selected' : ''; ?>>Medium</option>
@@ -235,7 +325,7 @@ $categories = getCategories($conn);
 
                             <div class="col-md-2">
                                 <label for="sweet_level" class="form-label">Sweet Level</label>
-                                <select class="form-select" id="sweet_level" name="sweet_level">
+                                <select class="form-select" id="sweet_level" name="variants[0][sweet_level]">
                                     <option value="none" <?php echo ($action == 'edit' && $menu_item['sweet_level'] == 'none') ? 'selected' : ''; ?>>None</option>
                                     <option value="mild" <?php echo ($action == 'edit' && $menu_item['sweet_level'] == 'mild') ? 'selected' : ''; ?>>Mild</option>
                                     <option value="medium" <?php echo ($action == 'edit' && $menu_item['sweet_level'] == 'medium') ? 'selected' : ''; ?>>Medium</option>
@@ -246,7 +336,7 @@ $categories = getCategories($conn);
                             
                             <div class="col-md-2">
                                 <label for="portion_size" class="form-label">Portion Size</label>
-                                <select class="form-select" id="portion_size" name="portion_size">
+                                <select class="form-select" id="portion_size" name="variants[0][portion_size]">
                                     <option value="small" <?php echo ($action == 'edit' && $menu_item['portion_size'] == 'small') ? 'selected' : ''; ?>>Small</option>
                                     <option value="regular" <?php echo ($action == 'edit' && $menu_item['portion_size'] == 'regular') ? 'selected' : ''; ?>>Regular</option>
                                     <option value="large" <?php echo ($action == 'edit' && $menu_item['portion_size'] == 'large') ? 'selected' : ''; ?>>Large</option>
@@ -255,14 +345,14 @@ $categories = getCategories($conn);
                             
                             <div class="col-md-3">
                                 <label for="prep_time" class="form-label">Preparation Time</label>
-                                <input type="number" class="form-control" id="prep_time" name="prep_time" min="1" value="<?php echo $action == 'edit' ? $menu_item['prep_time'] : '15'; ?>">
+                                <input type="number" class="form-control" id="prep_time" name="variants[0][prep_time]" min="1" value="<?php echo $action == 'edit' ? $menu_item['prep_time'] : '15'; ?>">
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label for="price" class="form-label">Price</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" value="<?php echo $action == 'edit' ? $menu_item['price'] : ''; ?>" required>
+                                    <input type="number" class="form-control" id="price" name="variants[0][price]" step="0.01" min="0" value="<?php echo $action == 'edit' ? $menu_item['price'] : ''; ?>" required>
                                 </div>
                                 <div class="invalid-feedback">Please enter a valid price.</div>
                             </div>
@@ -316,55 +406,84 @@ $categories = getCategories($conn);
         const attributesContainer = document.getElementById('attributes-container');
         
         if (addAttributeBtn && attributesContainer) {
-            let sectionCounter = 1;
+            let sectionCounter = 0; // Start from 0 for the first variant
             
-            addAttributeBtn.addEventListener('click', function() {
+            // Add remove button to the first row if it doesn't have one
+            const firstRow = attributesContainer.querySelector('.attribute-row');
+            if (firstRow && !firstRow.querySelector('.remove-section')) {
+                const removeButtonCol = document.createElement('div');
+                removeButtonCol.className = 'col-md-1 d-flex align-items-end mb-2';
+                removeButtonCol.innerHTML = `
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-section">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                firstRow.appendChild(removeButtonCol);
+                
+                // Add event listener to the remove button
+                const removeButton = removeButtonCol.querySelector('.remove-section');
+                removeButton.addEventListener('click', function() {
+                    if (attributesContainer.querySelectorAll('.attribute-row').length > 1) {
+                        this.closest('.attribute-row').remove();
+                    }
+                });
+            }
+            
+            // Function to add a new variant row
+            function addVariantRow(variant = {}) {
                 sectionCounter++;
+                
+                // Default values or use provided variant data
+                const spiceLevel = variant.spice_level || 'none';
+                const sweetLevel = variant.sweet_level || 'none';
+                const portionSize = variant.portion_size || 'small';
+                const prepTime = variant.prep_time || 15;
+                const price = variant.price || '';
                 
                 const newRow = document.createElement('div');
                 newRow.className = 'row mb-3 attribute-row';
                 newRow.innerHTML = `
                     <div class="col-md-2">
                         <label for="spice_level_${sectionCounter}" class="form-label">Spice Level</label>
-                        <select class="form-select" id="spice_level_${sectionCounter}" name="spice_level_${sectionCounter}">
-                            <option value="none">None</option>
-                            <option value="mild">Mild</option>
-                            <option value="medium">Medium</option>
-                            <option value="hot">Hot</option>
-                            <option value="extra hot">Extra Hot</option>
+                        <select class="form-select" id="spice_level_${sectionCounter}" name="variants[${sectionCounter}][spice_level]">
+                            <option value="none" ${spiceLevel === 'none' ? 'selected' : ''}>None</option>
+                            <option value="mild" ${spiceLevel === 'mild' ? 'selected' : ''}>Mild</option>
+                            <option value="medium" ${spiceLevel === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="hot" ${spiceLevel === 'hot' ? 'selected' : ''}>Hot</option>
+                            <option value="extra hot" ${spiceLevel === 'extra hot' ? 'selected' : ''}>Extra Hot</option>
                         </select>
                     </div>
 
                     <div class="col-md-2">
                         <label for="sweet_level_${sectionCounter}" class="form-label">Sweet Level</label>
-                        <select class="form-select" id="sweet_level_${sectionCounter}" name="sweet_level_${sectionCounter}">
-                            <option value="none">None</option>
-                            <option value="mild">Mild</option>
-                            <option value="medium">Medium</option>
-                            <option value="sweet">Sweet</option>
-                            <option value="extra sweet">Extra Sweet</option>
+                        <select class="form-select" id="sweet_level_${sectionCounter}" name="variants[${sectionCounter}][sweet_level]">
+                            <option value="none" ${sweetLevel === 'none' ? 'selected' : ''}>None</option>
+                            <option value="mild" ${sweetLevel === 'mild' ? 'selected' : ''}>Mild</option>
+                            <option value="medium" ${sweetLevel === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="sweet" ${sweetLevel === 'sweet' ? 'selected' : ''}>Sweet</option>
+                            <option value="extra sweet" ${sweetLevel === 'extra sweet' ? 'selected' : ''}>Extra Sweet</option>
                         </select>
                     </div>
                     
                     <div class="col-md-2">
                         <label for="portion_size_${sectionCounter}" class="form-label">Portion Size</label>
-                        <select class="form-select" id="portion_size_${sectionCounter}" name="portion_size_${sectionCounter}">
-                            <option value="small">Small</option>
-                            <option value="regular">Regular</option>
-                            <option value="large">Large</option>
+                        <select class="form-select" id="portion_size_${sectionCounter}" name="variants[${sectionCounter}][portion_size]">
+                            <option value="small" ${portionSize === 'small' ? 'selected' : ''}>Small</option>
+                            <option value="regular" ${portionSize === 'regular' ? 'selected' : ''}>Regular</option>
+                            <option value="large" ${portionSize === 'large' ? 'selected' : ''}>Large</option>
                         </select>
                     </div>
                     
                     <div class="col-md-3">
                         <label for="prep_time_${sectionCounter}" class="form-label">Preparation Time</label>
-                        <input type="number" class="form-control" id="prep_time_${sectionCounter}" name="prep_time_${sectionCounter}" min="1" value="15">
+                        <input type="number" class="form-control" id="prep_time_${sectionCounter}" name="variants[${sectionCounter}][prep_time]" min="1" value="${prepTime}">
                     </div>
 
                     <div class="col-md-2">
                         <label for="price_${sectionCounter}" class="form-label">Price</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="price_${sectionCounter}" name="price_${sectionCounter}" step="0.01" min="0">
+                            <input type="number" class="form-control" id="price_${sectionCounter}" name="variants[${sectionCounter}][price]" step="0.01" min="0" value="${price}">
                         </div>
                     </div>
                     
@@ -381,10 +500,46 @@ $categories = getCategories($conn);
                 const removeButtons = document.querySelectorAll('.remove-section');
                 removeButtons.forEach(button => {
                     button.addEventListener('click', function() {
-                        this.closest('.attribute-row').remove();
+                        if (attributesContainer.querySelectorAll('.attribute-row').length > 1) {
+                            this.closest('.attribute-row').remove();
+                            // Reindex the variants after removal
+                            reindexVariants();
+                        }
                     });
                 });
+            }
+            
+            // Add event listener to the add button
+            addAttributeBtn.addEventListener('click', function() {
+                addVariantRow();
             });
+            
+            // Function to reindex variants after removal
+            function reindexVariants() {
+                const rows = attributesContainer.querySelectorAll('.attribute-row');
+                rows.forEach((row, index) => {
+                    // Update all input and select names in this row
+                    const inputs = row.querySelectorAll('input, select');
+                    inputs.forEach(input => {
+                        const name = input.getAttribute('name');
+                        if (name && name.includes('variants[')) {
+                            const newName = name.replace(/variants\[\d+\]/, `variants[${index}]`);
+                            input.setAttribute('name', newName);
+                        }
+                    });
+                });
+            }
+            
+            // Load existing variants if editing
+            <?php if ($action == 'edit' && !empty($menu_item_variants)): ?>
+            // Load variants from PHP
+            const variants = <?php echo json_encode($menu_item_variants); ?>;
+            
+            // Add each variant as a row
+            variants.forEach(variant => {
+                addVariantRow(variant);
+            });
+            <?php endif; ?>
         }
     });
 </script>
@@ -403,9 +558,7 @@ $categories = getCategories($conn);
                                 <th>Image</th>
                                 <th>Name</th>
                                 <th>Category</th>
-                                <th>Price</th>
                                 <th>Type</th>
-                                <th>Spice Level</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -421,7 +574,6 @@ $categories = getCategories($conn);
                                 </td>
                                 <td><?php echo $item['name']; ?></td>
                                 <td><?php echo $item['category_name']; ?></td>
-                                <td>$<?php echo number_format($item['price'], 2); ?></td>
                                 <td>
                                     <span class="badge <?php echo $item['food_type'] == 'veg' ? 'bg-success' : 'bg-danger'; ?>">
                                         <?php echo ucfirst($item['food_type']); ?>
@@ -430,20 +582,7 @@ $categories = getCategories($conn);
                                     <span class="badge bg-secondary ms-1">18+</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
-                                    <?php 
-                                    $spice_icons = [
-                                        'mild' => 1,
-                                        'medium' => 2,
-                                        'hot' => 3,
-                                        'extra hot' => 4
-                                    ];
-                                    $count = $spice_icons[$item['spice_level']] ?? 0;
-                                    for ($i = 0; $i < $count; $i++) {
-                                        echo '<i class="fas fa-pepper-hot text-danger"></i> ';
-                                    }
-                                    ?>
-                                </td>
+                                
                                 <td>
                                     <a href="index.php?page=menu_items&action=edit&id=<?php echo $item['id']; ?>" class="btn btn-sm btn-primary">
                                         <i class="fas fa-edit"></i>
