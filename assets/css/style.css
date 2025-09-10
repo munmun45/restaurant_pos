@@ -1,0 +1,208 @@
+/* Custom styles for Restaurant POS System */
+
+/* General Styles */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+}
+
+/* Card Styles */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    font-weight: bold;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Menu Item Card */
+.menu-item-card {
+    height: 100%;
+}
+
+.menu-item-image {
+    height: 180px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.menu-item-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.veg-badge {
+    background-color: #28a745;
+}
+
+.non-veg-badge {
+    background-color: #dc3545;
+}
+
+.age-restricted-badge {
+    background-color: #6c757d;
+}
+
+.spice-level {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.spice-level i {
+    color: #dc3545;
+}
+
+/* Category Pills */
+.category-pills {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 10px 0;
+    margin-bottom: 20px;
+}
+
+.category-pills .nav-link {
+    border-radius: 20px;
+    padding: 8px 20px;
+    margin-right: 10px;
+    background-color: #f8f9fa;
+    color: #212529;
+    border: 1px solid #dee2e6;
+}
+
+.category-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+/* Dashboard Stats */
+.stats-card {
+    text-align: center;
+    padding: 20px;
+}
+
+.stats-card i {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+    color: #0d6efd;
+}
+
+.stats-card h3 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stats-card p {
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+/* Forms */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+/* Image Preview */
+.image-preview {
+    width: 150px;
+    height: 150px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Add to Order Button */
+.btn-add-to-order {
+    width: 100%;
+    border-radius: 0;
+    padding: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .menu-item-image {
+        height: 140px;
+    }
+    
+    .stats-card i {
+        font-size: 2rem;
+    }
+    
+    .stats-card h3 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Login Page */
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+}
+
+.login-logo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo h1 {
+    font-size: 2.5rem;
+    color: #0d6efd;
+}
+
+.login-card {
+    padding: 20px;
+}
+
+/* 404 Page */
+.error-container {
+    text-align: center;
+    padding: 50px 0;
+}
+
+.error-container h1 {
+    font-size: 8rem;
+    color: #0d6efd;
+}
+
+.error-container h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
